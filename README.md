@@ -1,5 +1,10 @@
 # ETABS Load Assigner v0.1
 
+> **Từ 2026-11-08, sản phẩm chính là plugin C# trong thư mục `plugin/`
+> (nạp trong ETABS v22 qua Tools → Add/Show Plug-Ins, xem
+> `plugin/README.md`). Bản Python dưới đây được GIỮ NGUYÊN làm tài liệu
+> tham khảo và không phát triển thêm.**
+
 Gán tải móng (foundation loads) từ file Excel/PDF của client vào ETABS,
 tự động — thay cho gán tay từng pattern từng điểm.
 

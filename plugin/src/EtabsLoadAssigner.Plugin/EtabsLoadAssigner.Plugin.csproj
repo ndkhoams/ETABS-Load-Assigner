@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Cho phep build tren Linux (may dev): chi dung de kiem tra bien dich;
+         DLL chay that van phai build / chay tren Windows co ETABS. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>EtabsLoadAssignerPlugin</AssemblyName>
+    <RootNamespace>EtabsLoadAssigner.Plugin</RootNamespace>
+    <!--
+      Plugin chay trong tien trinh ETABS: CSiAPIv1.dll KHONG duoc copy ra
+      thu muc output (Private=False) va KHONG duoc dong goi kem khi phat
+      hanh — luc chay, ETABS da nap san API nay.
+      Target: ETABS v22 tro len (.NET 8 + CSiAPIv1).
+    -->
+    <!-- CopyLocalLockFileAssemblies=true: de ClosedXML (+ DocumentFormat.OpenXml...)
+         duoc copy ra output cung plugin DLL — ETABS chi probe thu muc chua DLL
+         plugin, khong biet doc deps.json. Khong co dong nay, luc mo file Excel
+         se loi FileNotFoundException. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EtabsLoadAssigner.Core\EtabsLoadAssigner.Core.csproj" />
+    <Reference Include="CSiAPIv1">
+      <HintPath>..\..\lib\CSiAPIv1.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

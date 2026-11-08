@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "source_file": "LP1-PB19-10EAC-C-M2....xlsx (dien ten file that)",
+  "sheet": "",
+  "axis": {
+    "hx_axis": "X",
+    "hx_sign": 1,
+    "hy_axis": "Y",
+    "hy_sign": 1,
+    "vz_axis": "Z",
+    "vz_sign": -1
+  },
+  "pattern_map": {
+    "dead loads": "DLS",
+    "live load belt conveyor load bc-5a": "BC1",
+    "live load belt conveyor load bc-5b": "BC2",
+    "live load belt tension bc-5a max/min": "BT1",
+    "live load belt tension bc-5b max/min": "BT2",
+    "live load roof (inacc.)": "LLR",
+    "imperfektion x": "NX",
+    "imperfektion y": "NY",
+    "friction +x": "F",
+    "wind +x": "WX+",
+    "wind -x": "WX-",
+    "wind +y": "WY+1",
+    "wind -y": "WY-1",
+    "temperatur dt = 16°c": "T",
+    "earthquake x (lfp; 0,12g)": "EX",
+    "earthquake y (lfp; 0,12g)": "EY",
+    "earthquake z (lfp; 0,94g)": "EZ",
+    "live load walkway left side (5,0kn/m²)": "LL1",
+    "live load walkway middle (5,0kn/m²)": "LL2",
+    "live load walkway right side (5,0kn/m²)": "LL3",
+    "live load platforms and stairs": "LL4",
+    "live load lifting jack #1 (service load 16 kn)": "LL5"
+  },
+  "point_alias": {
+    "20 / D": "20 / D",
+    "20 / E": "20 / E",
+    "27 / D": "27 / D",
+    "27 / E": "27 / E"
+  },
+  "replace_existing": true,
+  "create_missing_pattern": true,
+  "reversible_mode": "both",
+  "range_policy": "max_abs",
+  "skip_zero_rows": true
+}
