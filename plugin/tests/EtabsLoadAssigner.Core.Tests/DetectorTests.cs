@@ -115,6 +115,22 @@ public sealed class DetectorTests : IDisposable
     }
 
     [Fact]
+    public void Detector_DetectFile_NullSheet_PicksBestSheet()
+    {
+        // Fallback (user chot 08/11, anh build 201251): sheet dau tien
+        // (README) khong co data thi tu dong chuyen sang sheet tiep theo co
+        // data — DetectFile(path, null) quet tat ca sheet va chon bang co
+        // nhieu dong tai nhat. Chi khi ca file khong co data moi bao loi.
+        // Fixture tong hop co nhieu sheet; sheet null phai tra ve bang co data.
+        var t = Detector.DetectFile(_fixture, null);
+        Assert.True(t.Rows.Count > 0);
+        Assert.True(t.Points.Count > 0);
+        // Sheet cu the khong co data (vd README trong file that) tra bang rong.
+        var empty = Detector.DetectFile(_fixture, "KHONG_CO_SHEET_NAY");
+        Assert.Equal(0, empty.Rows.Count);
+    }
+
+    [Fact]
     public void ProfileSheet_RefusesEmptyTable()
     {
         // Loi truoc day (user bao 08/11, anh build 195953): tu dong luu khi
