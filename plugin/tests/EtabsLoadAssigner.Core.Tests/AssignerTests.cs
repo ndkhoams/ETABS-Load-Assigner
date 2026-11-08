@@ -44,6 +44,49 @@ public sealed class AssignerTests : IDisposable
     }
 
     [Fact]
+    public void Assigner_AssignsMoments_WhenTableHasMoments()
+    {
+        // Bang co mo men: mo men duoc gan kem theo luc, cung pattern, cung
+        // phuong/chieu (Mx theo truc Hx, My theo Hy, Mz theo Vz — Vz -> -Z
+        // nen Mz doi dau, Mx/My giu dau). Bang khong co mo men thi Mx=My=Mz=0.
+        var grid = new List<List<object?>>
+        {
+            new() { "LONG PHU BC-5", "", "20 / D", "", "", "", "", "" },
+            new() { "Foundation loads", "", "Hx", "Hy", "Vz", "Mx", "My", "Mz" },
+            new() { "", "", "[kN]", "[kN]", "[kN]", "[kN·m]", "[kN·m]", "[kN·m]" },
+            new() { "Dead loads", "", 0, -2, 19, 5, -3, 2 },
+        };
+        var t = Detector.DetectFromGrid(grid, "test", "Foundation loads");
+        var p = new Profile();
+        p.PatternMap = new Dictionary<string, RowPattern>
+        {
+            ["Dead loads"] = new() { Left = "DLS" },
+        };
+        var res = Assigner.BuildAssignments(t, "20 / D", "J1", p);
+        Assert.Empty(res.Skipped);
+        var a = Assert.Single(res.Assignments);
+        Assert.Equal("DLS", a.Pattern);
+        Assert.Equal(-2, a.Fy);
+        Assert.Equal(-19, a.Fz);
+        Assert.Equal(5, a.Mx);
+        Assert.Equal(-3, a.My);
+        Assert.Equal(-2, a.Mz); // Mz doi dau theo Vz -> -Z
+        Assert.Equal(new[] { 0.0, -2.0, -19.0, 5.0, -3.0, -2.0 }, a.Values());
+    }
+
+    [Fact]
+    public void Assigner_NoMoments_WhenTableHasForcesOnly()
+    {
+        // Bang chi co luc: Mx/My/Mz = 0 (khong doi hanh vi cu).
+        var t = Detector.DetectExcel(_fixture);
+        var res = Assigner.BuildAssignments(t, "20 / D", "20 / D", TestProfile());
+        var byPat = res.Assignments.ToDictionary(a => a.Pattern);
+        Assert.Equal(0, byPat["DLS"].Mx);
+        Assert.Equal(0, byPat["DLS"].My);
+        Assert.Equal(0, byPat["DLS"].Mz);
+    }
+
+    [Fact]
     public void Axis_Default_VzDown_ToMinusZ()
     {
         var ax = new AxisMapping(); // mac dinh Vz -> -Z

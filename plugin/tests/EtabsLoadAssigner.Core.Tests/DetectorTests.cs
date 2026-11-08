@@ -100,6 +100,44 @@ public sealed class DetectorTests : IDisposable
     }
 
     [Fact]
+    public void Detector_DetectsMoments_WhenSixColumnsPerPoint()
+    {
+        // Bang co mo men (user chot 08/11 — mo rong cho tuong lai): moi diem
+        // 6 cot Hx/Hy/Vz/Mx/My/Mz. Detector phai nhan ra va doc ca mo men.
+        var grid = new List<List<object?>>
+        {
+            new() { "LONG PHU BC-5", "", "20 / D", "", "", "", "", "" },
+            new() { "Foundation loads", "", "Hx", "Hy", "Vz", "Mx", "My", "Mz" },
+            new() { "", "", "[kN]", "[kN]", "[kN]", "[kN·m]", "[kN·m]", "[kN·m]" },
+            new() { "Dead loads", "", 0, -2, 19, 5, -3, 2 },
+            new() { "Wind +Y", "", 0, 7, -11, 0, 4, -6 },
+        };
+        var t = Detector.DetectFromGrid(grid, "test", "Foundation loads");
+        Assert.True(t.HasMoments);
+        Assert.Equal(new[] { "20 / D" }, t.Points);
+        Assert.Equal(2, t.Rows.Count);
+        var dead = t.Rows.Single(r => r.Name == "Dead loads");
+        Assert.Equal(19, dead.Values["20 / D"]["Vz"].Value);
+        Assert.Equal(5, dead.Values["20 / D"]["Mx"].Value);
+        Assert.Equal(-3, dead.Values["20 / D"]["My"].Value);
+        Assert.Equal(2, dead.Values["20 / D"]["Mz"].Value);
+        Assert.Empty(t.Warnings);
+    }
+
+    [Fact]
+    public void Detector_NoMoments_WhenThreeColumnsPerPoint()
+    {
+        // Bang hien tai chi co luc (3 cot/diem): HasMoments = false, khong
+        // co khoa Mx/My/Mz — cot mo men o grid TU AN (user chot 08/11).
+        var t = Detector.DetectExcel(_fixture);
+        Assert.False(t.HasMoments);
+        var dead = t.Rows.Single(r => r.Name == "Dead loads");
+        Assert.False(dead.Values["20 / D"].ContainsKey("Mx"));
+        Assert.False(dead.Values["20 / D"].ContainsKey("My"));
+        Assert.False(dead.Values["20 / D"].ContainsKey("Mz"));
+    }
+
+    [Fact]
     public void Detector_ListSheets()
     {
         var sheets = Detector.ListSheets(_fixture);
@@ -127,7 +165,7 @@ public sealed class DetectorTests : IDisposable
         Assert.True(t.Points.Count > 0);
         // Sheet cu the khong co data (vd README trong file that) tra bang rong.
         var empty = Detector.DetectFile(_fixture, "KHONG_CO_SHEET_NAY");
-        Assert.Equal(0, empty.Rows.Count);
+        Assert.Empty(empty.Rows);
     }
 
     [Fact]
