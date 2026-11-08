@@ -120,3 +120,44 @@ def test_profile_save_load_roundtrip(tmp_path):
     assert p2.pattern_map["Dead loads"] == "DLS"
     assert p2.point_alias["20 / D"] == "J-20D"
     assert p2.axis.vz_sign == -1
+
+
+def test_neg_pattern_inherits_base_type():
+    from etabs_loader.etabs_api import create_type_for
+    mock = MockEtabs()
+    pats = mock.list_patterns()
+    assert create_type_for("EX_NEG", pats) == 5   # EX 'Seismic'
+    assert create_type_for("NX_NEG", pats) == 12  # NX 'Notional' (=12, khong phai 9=Move)
+    assert create_type_for("WX+_NEG", pats) == 6  # WX+ 'Wind'
+    assert create_type_for("T_NEG", pats) == 10   # T 'Temperature' (co trong enum v22)
+    assert create_type_for("LLR_NEG", pats) == 11  # LLR 'Roof Live'
+    assert create_type_for("ZZ_NEG", pats) == 8   # khong co goc
+    assert create_type_for("NEW", pats) == 8      # pattern thuong
+    # dang ma so tu GetLoadType tren ETABS that ('5' thay vi 'Seismic')
+    from etabs_loader.detector import PatternDef
+    assert create_type_for("EX_NEG", [PatternDef("EX", "No", "5", 0)]) == 5
+
+
+def test_assign_both_creates_neg_patterns_then_assigns():
+    """Mo phong dung luong assign() cua app.py tren Mock: tao pattern
+    thieu (ke thua loai) roi gan het — diem 20/D phai ra 18 tai."""
+    from etabs_loader.etabs_api import create_type_for
+    tab = detect_excel(FIXTURE)
+    prof = _profile()
+    prof.reversible_mode = "both"
+    prof.create_missing_pattern = True
+    res = build_assignments(tab, "20 / D", prof)
+    mock = MockEtabs()
+    missing = sorted({a.pattern for a in res.assignments}
+                     - set(mock.pattern_names()))
+    assert missing, "fixture phai co it nhat 1 pattern _NEG thieu"
+    existing = mock.list_patterns()
+    for p in missing:
+        mock.create_pattern(p, type_code=create_type_for(p, existing))
+    got = {p.name: p.type for p in mock.list_patterns() if p.name.endswith("_NEG")}
+    assert got.get("EX_NEG") == "Seismic"
+    assert got.get("NX_NEG") == "Notional"
+    for a in res.assignments:
+        mock.assign_force(a.etabs_joint, a.pattern, a.values())
+    assert len(mock.assignments) == len(res.assignments)
+    assert mock.get_assignment("20 / D", "EX_NEG") == [-1.0, 1.0, 1.0, 0.0, 0.0, 0.0]

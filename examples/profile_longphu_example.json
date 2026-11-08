@@ -41,8 +41,8 @@
     "27 / E": "27 / E"
   },
   "replace_existing": true,
-  "create_missing_pattern": false,
-  "reversible_mode": "plus_only",
+  "create_missing_pattern": true,
+  "reversible_mode": "both",
   "range_policy": "max_abs",
   "skip_zero_rows": true
 }

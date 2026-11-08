@@ -16,7 +16,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from .assigner import build_assignments, preview_text
 from .detector import detect_file
-from .etabs_api import EtabsError, MockEtabs
+from .etabs_api import EtabsError, MockEtabs, create_type_for
 from .mapping import AxisMapping, Profile, suggest_pattern
 
 
@@ -125,9 +125,9 @@ class App(tk.Tk):
         ttk.Label(bar, text="  Goi y theo ten (BC=belt conveyor, BT=belt tension, NX/NY=notional...) — CHI LA GOI Y, ban chot lai tung dong.").pack(side="left")
         opts = ttk.Frame(self.tab_match)
         opts.pack(fill="x", pady=6)
-        self.create_missing_var = tk.BooleanVar(value=False)
+        self.create_missing_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(opts, text="Tu tao pattern chua co trong model", variable=self.create_missing_var).pack(side="left")
-        self.reversible_var = tk.StringVar(value="plus_only")
+        self.reversible_var = tk.StringVar(value="both")
         ttk.Label(opts, text="  Hang +/-:").pack(side="left")
         ttk.Combobox(opts, textvariable=self.reversible_var, values=["plus_only", "both"], width=12, state="readonly").pack(side="left")
         ttk.Label(opts, text="(plus_only = chi chieu +, both = them pattern _NEG chieu am)").pack(side="left")
@@ -359,14 +359,17 @@ class App(tk.Tk):
                                    f"'{self.profile.point_alias.get(point, point)}'?\n"
                                    f"Pattern: {', '.join(sorted(set(a.pattern for a in res.assignments)))}"):
             return
-        # tao pattern thieu (neu tick)
+        # tao pattern thieu (neu tick) — pattern _NEG ke thua loai cua
+        # pattern goc (EX_NEG <- EX 'Seismic'), khong phai tat ca Other.
         missing = [p for p in sorted(set(a.pattern for a in res.assignments))
                    if p not in self.etabs.pattern_names()]
         if missing:
             if self.profile.create_missing_pattern:
+                existing = self.etabs.list_patterns()
                 for p in missing:
                     try:
-                        self.etabs.create_pattern(p, "Other")
+                        self.etabs.create_pattern(
+                            p, type_code=create_type_for(p, existing))
                     except Exception as e:
                         messagebox.showerror("Khong tao duoc pattern", f"{p}: {e}")
                         return

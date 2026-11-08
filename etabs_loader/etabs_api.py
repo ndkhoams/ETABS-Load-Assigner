@@ -10,11 +10,10 @@ API that duoc (can doi chieu file .chm trong thu muc cai ETABS):
   - SapModel.PointObj.SetLoadForce(point_name, load_pattern, [Fx,Fy,Fz,Mx,My,Mz])
   - SapModel.PointObj.GetNameList() / GetLabelFromName() / GetNameFromLabel()
 
-CHUA XAC MINH tren ETABS that: ten ham GetSelected/Select, ma enum
-cua tung loai pattern (Dead=1, SuperDead=2, Live=3, RoofLive=4,
-Quake=5, Wind=6, Snow=7, Other=8, Notional=9...), va cach tra ret
-qua comtypes. Neu ham nao bao loi tren may that, ghi lai thong bao
-+ version ETABS, app se sua theo dung .chm — khong doan them.
+CHUA XAC MINH tren ETABS that: ten ham GetSelected/Select, va cach tra
+ret qua comtypes. Ma enum loai pattern DA doi chieu voi CSiAPIv1.dll
+v22 that (2026-11-08). Neu ham nao bao loi tren may that, ghi lai thong
+bao + version ETABS, app se sua theo dung .chm — khong doan them.
 Xem HUONG_DAN_TEST muc 5.
 """
 from __future__ import annotations
@@ -23,18 +22,50 @@ from dataclasses import dataclass, field
 
 from .detector import PatternDef
 
-# Ma loai pattern theo CSI eLoadPatternType — LTYPE_OTHER=8 da co trong
-# vi du API chinh thuc; cac ma con lai CAN doi chieu .chm truoc khi dung
-# de tao pattern moi (neu sai, app tu fallback ve Other=8).
+# Ma loai pattern theo CSiAPIv1.eLoadPatternType — DA DOI CHIEU truc tiep
+# voi CSiAPIv1.dll that tu ETABS v22 cua user (2026-11-08, bang chuong
+# trinh dotnet doc enum tu DLL): Notional=12 (KHONG phai 9 — 9 la Move),
+# Temperature=10 (CO ton tai), Rooflive=11 (KHONG phai 4 — 4 la ReduceLive).
+# Ban truoc dung 9/4/8 sai 3 ma — da sua. Fallback Other=8 van giu.
 LOAD_TYPE_CODE = {
-    "Dead": 1, "Super Dead": 2, "Live": 3, "Roof Live": 4,
+    "Dead": 1, "SuperDead": 2, "Super Dead": 2,
+    "Live": 3, "ReduceLive": 4, "Reduce Live": 4,
     "Seismic": 5, "Quake": 5, "Wind": 6, "Snow": 7, "Other": 8,
-    "Notional": 9, "Temperature": 8,
+    "Move": 9, "Temperature": 10,
+    "Rooflive": 11, "Roof Live": 11, "Notional": 12,
 }
 
 
-class EtabsError(RuntimeError):
-    pass
+NEG_SUFFIX = "_NEG"
+
+
+def _type_to_code(type_str) -> int:
+    """Chuan hoa loai pattern (ten 'Seismic' hay ma so '5' tu .chm)
+    ve ma int de tao pattern. Khong biet -> Other=8."""
+    if type_str is None:
+        return 8
+    s = str(type_str).strip()
+    if s.isdigit():
+        return int(s)
+    return LOAD_TYPE_CODE.get(s, 8)
+
+
+_CODE_TO_NAME = {1: "Dead", 2: "Super Dead", 3: "Live", 4: "Reduce Live",
+                 5: "Seismic", 6: "Wind", 7: "Snow", 8: "Other", 9: "Move",
+                 10: "Temperature", 11: "Roof Live", 12: "Notional"}
+
+
+def create_type_for(pattern_name: str, existing_patterns) -> int:
+    """Ma loai de tao 1 pattern moi.
+    Pattern _NEG (chieu am cua hang +/-) ke thua dung loai cua pattern
+    goc trong model (EX_NEG <- EX 'Seismic'=5, NX_NEG <- NX 'Notional'=9);
+    pattern khac hoac khong tim thay goc -> Other=8."""
+    if pattern_name.endswith(NEG_SUFFIX):
+        base = pattern_name[:-len(NEG_SUFFIX)]
+        for p in existing_patterns:
+            if p.name == base:
+                return _type_to_code(p.type)
+    return 8
 
 
 @dataclass
@@ -85,9 +116,11 @@ class MockEtabs:
     def get_selected_points(self):
         return [self.points[s] for s in self.selected if s in self.points]
 
-    def create_pattern(self, name, type_str="Other"):
+    def create_pattern(self, name, type_str="Other", type_code=None):
         if name in self.pattern_names():
             return False
+        if type_code is not None:
+            type_str = _CODE_TO_NAME.get(type_code, "Other")
         self.patterns.append(PatternDef(name, "No", type_str, 0))
         return True
 
@@ -155,7 +188,10 @@ class RealEtabs:
         out = []
         for nm in names or []:
             try:
-                _, typ, _, _ = self.sap.LoadPatterns.GetLoadType(nm)
+                # GetLoadType chi tra 1 out (MyType) — comtypes tra thang
+                # gia tri do (khong phai tuple 4 phan tu nhu ban cu ghi).
+                res = self.sap.LoadPatterns.GetLoadType(nm)
+                typ = res[-1] if isinstance(res, tuple) else res
             except Exception:
                 typ = ""
             out.append(PatternDef(name=nm, type=str(typ)))
@@ -169,7 +205,9 @@ class RealEtabs:
         out = []
         for nm in names or []:
             try:
-                label, _, _, _ = self.sap.PointObj.GetLabelFromName(nm)
+                # GetLabelFromName tra 2 out (Label, Story) — khong phai 4.
+                res = self.sap.PointObj.GetLabelFromName(nm)
+                label = res[0] if isinstance(res, tuple) else res
             except Exception:
                 label = nm
             try:
@@ -180,8 +218,9 @@ class RealEtabs:
         return out
 
     def get_selected_points(self):
-        # CSI API: SapModel.Select.GetSelected() -> (n, ObjType[], ObjName[])
-        n, types, names = self.sap.Select.GetSelected()
+        # CSI API: SapModel.SelectObj.GetSelected() -> (n, ObjType[], ObjName[])
+        # (thuoc tinh la SelectObj, khong phai Select; ObjectType 1 = point)
+        n, types, names = self.sap.SelectObj.GetSelected()
         pts = {p.name: p for p in self.list_points()}
         out = []
         for t, nm in zip(types or [], names or []):
@@ -189,8 +228,8 @@ class RealEtabs:
                 out.append(pts[nm])
         return out
 
-    def create_pattern(self, name, type_str="Other"):
-        code = LOAD_TYPE_CODE.get(type_str, 8)
+    def create_pattern(self, name, type_str="Other", type_code=None):
+        code = type_code if type_code is not None else LOAD_TYPE_CODE.get(type_str, 8)
         ret = self.sap.LoadPatterns.Add(name, code, 0, True)
         if ret != 0 and code != 8:
             ret = self.sap.LoadPatterns.Add(name, 8, 0, True)

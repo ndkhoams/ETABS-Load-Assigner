@@ -67,10 +67,10 @@ Build .exe trên Windows: `pip install pyinstaller` rồi `python build_exe.py`
   file thật này. File PDF gốc (20MB, nhị phân) không đẩy lên GitHub
   được — giữ ở `tests/fixtures/` local.
 - **Chưa test trên ETABS thật**: tên hàm COM (`PointObj.SetLoadForce`,
-  `LoadPatterns.Add`, `Select.GetSelected`) lấy từ hướng dẫn API công
-  khai; mã enum loại pattern (trừ Other=8) chưa đối chiếu file
-  `CSI API ETABS v1.chm`. Nếu hàm nào báo lỗi trên máy thật, ghi lại
-  thông báo + version ETABS để sửa theo đúng .chm.
+  `LoadPatterns.Add`, `SelectObj.GetSelected`) và mã enum loại pattern
+  **đã đối chiếu trực tiếp với `CSiAPIv1.dll` thật từ ETABS v22**
+  (2026-11-08) — nhưng chưa gọi lần nào trên model sống. Nếu hàm nào báo
+  lỗi trên máy thật, ghi lại thông báo + version ETABS để sửa.
 - **Gợi ý match pattern chưa được bạn xác nhận** (BC1=BC-5A, BT1=belt
   tension, NX/NY=Imperfektion... suy từ tên gọi). Kiểm tra bảng match
   trước khi gán.
@@ -88,10 +88,26 @@ thanh trên trước khi nhấn diện. Sheet `KIEM TRA` trong file Excel liệt
 kê các ô đã sửa tay + ghi chú (vd ô `+/- 1` ở bảng 90/D.1, khoang
 `67/-71` ở bảng 85.1).
 
-## Thay đổi v0.1.1 (local, chưa push)
+## Thay đổi v0.1.1 (đã push, head `609cb8c`)
 
 - Chọn sheet khi file Excel có nhiều bảng (combobox ở thanh trên).
 - `detector.parse_cell`: ô viết `+/- 1` (bảng 90/D.1) parse ra 1.
 - `Profile.pattern_for`: match pattern không phân biệt hoa/thường —
   profile ví dụ lưu key chữ thường, trước đây assigner bỏ qua toàn bộ
   dòng vì không khớp tên (lỗi tìm được nhờ test trên file thật).
+
+## Thay đổi v0.1.2 (đang push)
+
+- **Hàng ± gán cả 2 chiều (user chốt)**: `reversible_mode="both"` mặc định
+  (app + profile ví dụ) — pattern gốc + pattern `_NEG` đảo dấu.
+- **Tự tạo pattern thiếu, đúng loại**: tick "Tự tạo pattern..." mặc định BẬT;
+  pattern `_NEG` kế thừa loại của pattern gốc (`EX_NEG` <- `EX` Seismic,
+  `NX_NEG` <- `NX` Notional, `T_NEG` <- `T` Temperature) qua
+  `etabs_api.create_type_for()`; fallback Other=8 nếu `Add` lỗi.
+- **Sửa mã loại pattern (đối chiếu `CSiAPIv1.dll` thật, ETABS v22)**:
+  Notional=12 (bản cũ ghi 9 — 9 là Move!), Rooflive=11 (bản cũ 4 =
+  ReduceLive), Temperature=10 (bản cũ 8).
+- **Sửa 3 lỗi chữ ký `RealEtabs` (đối chiếu DLL thật)**: `GetLoadType`
+  chỉ trả 1 out, `GetLabelFromName` chỉ 2 out, thuộc tính đúng là
+  `SelectObj` (không phải `Select`).
+- Test: 30/30 pass (9 cũ + 19 file thật + 2 mới cho auto-create `_NEG`).
