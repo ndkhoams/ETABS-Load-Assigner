@@ -59,10 +59,13 @@ Build .exe trên Windows: `pip install pyinstaller` rồi `python build_exe.py`
 
 ## Giới hạn v0.1 — đọc trước khi dùng trên model thật
 
-- **Chưa test trên file thật**: detector mới chỉ chạy trên fixture tổng
-  hợp chép tay từ ảnh screenshot. File Excel/PDF thật (LP1-PB19-10EAC-...)
-  có thể khác layout (sheet khác, dòng header khác) — gửi file thật để
-  validate lại detector.
+- **Đã validate trên file thật 2026-11-08**: ban vẽ PDF
+  `BANG_NOI_LUC_0_qo1t.pdf` (3 tờ A0, SH.4/5/6) đã chuyển thành
+  `examples/BANG_NOI_LUC_BC-5A_B.xlsx` — 17 bảng, 183 điểm, 321 dòng,
+  10.908 ô (OCR + đối chiếu bằng mắt từng ô khả nghi). Detector đọc
+  khớp 17/17 sheet; test `tests/test_real_excel.py` (19 test) chạy trên
+  file thật này. File PDF gốc (20MB, nhị phân) không đẩy lên GitHub
+  được — giữ ở `tests/fixtures/` local.
 - **Chưa test trên ETABS thật**: tên hàm COM (`PointObj.SetLoadForce`,
   `LoadPatterns.Add`, `Select.GetSelected`) lấy từ hướng dẫn API công
   khai; mã enum loại pattern (trừ Other=8) chưa đối chiếu file
@@ -73,3 +76,22 @@ Build .exe trên Windows: `pip install pyinstaller` rồi `python build_exe.py`
   trước khi gán.
 - Chỉ gán tải điểm (point load) tại joint — chưa gán tải lên frame/area,
   chưa tạo load case/combo.
+
+## File thật — BẢNG NỘI LỰC LONG PHU BC-5 (2026-11-08)
+
+File Excel `examples/BANG_NOI_LUC_BC-5A_B.xlsx` chuyển từ bản vẽ PDF thật
+`BANG_NOI_LUC_0_qo1t.pdf` (FOUNDATION & LOADS SH.4/5/6, LONG PHU-1):
+17 bảng, 183 điểm, 321 dòng tải, 10.908 ô số — OCR (RapidOCR + OpenCV)
++ đối chiếu bằng mắt từng ô khả nghi (xem `pdf_to_excel/` — script OCR,
+sửa tay có ghi chú). Mỗi bảng 1 sheet (tên SH4-T1...), chọn sheet ở
+thanh trên trước khi nhấn diện. Sheet `KIEM TRA` trong file Excel liệt
+kê các ô đã sửa tay + ghi chú (vd ô `+/- 1` ở bảng 90/D.1, khoang
+`67/-71` ở bảng 85.1).
+
+## Thay đổi v0.1.1 (local, chưa push)
+
+- Chọn sheet khi file Excel có nhiều bảng (combobox ở thanh trên).
+- `detector.parse_cell`: ô viết `+/- 1` (bảng 90/D.1) parse ra 1.
+- `Profile.pattern_for`: match pattern không phân biệt hoa/thường —
+  profile ví dụ lưu key chữ thường, trước đây assigner bỏ qua toàn bộ
+  dòng vì không khớp tên (lỗi tìm được nhờ test trên file thật).

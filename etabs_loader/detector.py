@@ -61,6 +61,13 @@ def parse_cell(raw) -> LoadValue:
     s = _norm(raw)
     if s in ("", "-", "--", "—", "n/a", "N/A"):
         return LoadValue(raw=s, kind="blank")
+    # o viet '+/- 1' / '-/+ 0' (vd bang 90/D.1): gia tri dao chieu,
+    # lay do lon; dau +/- goc giu trong raw de nguoi doc thay
+    if s.startswith(("+/-", "-/+", "±")):
+        s = s[3:].strip() if s.startswith(("+/-", "-/+")) else s[1:].strip()
+        n = _num(s)
+        if n is not None:
+            return LoadValue(raw=str(raw).strip(), kind="number", value=n)
     m = _RANGE_RE.match(s)
     if m:
         a = _num(m.group(1))
@@ -259,11 +266,21 @@ def detect_from_grid(grid, source: str = "", sheet: str = "") -> FoundationTable
     return table
 
 
-def detect_excel(path: str) -> FoundationTable:
+def list_sheets(path: str) -> list:
+    """Liet ke ten sheet trong file Excel (de user chon bang can nhap
+    khi file co nhieu bang — moi bang 1 sheet)."""
+    import openpyxl
+    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    return list(wb.sheetnames)
+
+
+def detect_excel(path: str, sheet: str | None = None) -> FoundationTable:
     import openpyxl
     wb = openpyxl.load_workbook(path, data_only=True)
     best = None
     for ws in wb.worksheets:
+        if sheet is not None and ws.title != sheet:
+            continue
         grid = [[c.value for c in row] for row in ws.iter_rows()]
         t = detect_from_grid(grid, source=path, sheet=ws.title)
         # uu tien bang co ca diem + dong tai; gop pattern table tu moi sheet
@@ -276,7 +293,13 @@ def detect_excel(path: str) -> FoundationTable:
             best.patterns = best.patterns + t.patterns
     if best is None:
         return FoundationTable(source=path, warnings=["File Excel khong co sheet nao."])
-    # neu bang chinh khong co pattern nhung sheet khac co, da gop o tren
+    # neu chi dinh sheet: van gop bang pattern tu cac sheet con lai
+    if sheet is not None:
+        for ws in wb.worksheets:
+            if ws.title == sheet:
+                continue
+            grid = [[c.value for c in row] for row in ws.iter_rows()]
+            best.patterns = best.patterns + _find_pattern_table(grid)
     return best
 
 
@@ -307,10 +330,10 @@ def detect_pdf(path: str) -> FoundationTable:
     return best
 
 
-def detect_file(path: str) -> FoundationTable:
+def detect_file(path: str, sheet: str | None = None) -> FoundationTable:
     low = path.lower()
     if low.endswith((".xlsx", ".xlsm")):
-        return detect_excel(path)
+        return detect_excel(path, sheet=sheet)
     if low.endswith(".pdf"):
         return detect_pdf(path)
     if low.endswith(".xls"):

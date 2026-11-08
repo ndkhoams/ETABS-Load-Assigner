@@ -42,7 +42,12 @@ class App(tk.Tk):
         top = ttk.Frame(self, padding=8)
         top.pack(fill="x")
         ttk.Button(top, text="Chon file Excel/PDF...", command=self.choose_file).pack(side="left")
-        ttk.Entry(top, textvariable=self.file_path, width=55).pack(side="left", padx=6)
+        ttk.Entry(top, textvariable=self.file_path, width=45).pack(side="left", padx=6)
+        ttk.Label(top, text="Sheet:").pack(side="left")
+        self.sheet_var = tk.StringVar(value="")
+        self.sheet_combo = ttk.Combobox(top, textvariable=self.sheet_var, width=22, state="readonly")
+        self.sheet_combo.pack(side="left", padx=4)
+        self.sheet_combo.bind("<<ComboboxSelected>>", lambda e: self.detect())
         ttk.Button(top, text="Nhan dien bang", command=self.detect).pack(side="left")
         ttk.Button(top, text="Tai profile...", command=self.load_profile).pack(side="left", padx=6)
         ttk.Button(top, text="Luu profile...", command=self.save_profile).pack(side="left")
@@ -168,6 +173,15 @@ class App(tk.Tk):
         p = filedialog.askopenfilename(filetypes=[("Excel/PDF", "*.xlsx *.pdf"), ("Excel", "*.xlsx"), ("PDF", "*.pdf")])
         if p:
             self.file_path.set(p)
+            self.sheet_var.set("")
+            if p.lower().endswith((".xlsx", ".xlsm")):
+                try:
+                    from .detector import list_sheets
+                    self.sheet_combo["values"] = list_sheets(p)
+                except Exception:
+                    self.sheet_combo["values"] = []
+            else:
+                self.sheet_combo["values"] = []
             self.detect()
 
     def detect(self):
@@ -176,12 +190,22 @@ class App(tk.Tk):
             messagebox.showwarning("Chua chon file", "Chon file Excel (.xlsx) hoac PDF truoc.")
             return
         try:
-            self.table = detect_file(path)
+            sheet = self.sheet_var.get().strip() or None
+            self.table = detect_file(path, sheet=sheet)
         except Exception as e:
             messagebox.showerror("Khong doc duoc file", str(e))
             return
+        # nap danh sach sheet (ca khi mo file bang cach khac, khong qua Chon file)
+        if path.lower().endswith((".xlsx", ".xlsm")):
+            try:
+                from .detector import list_sheets
+                self.sheet_combo["values"] = list_sheets(path)
+            except Exception:
+                pass
         self.profile.source_file = path
         self.profile.sheet = self.table.sheet
+        if self.table.sheet and not self.sheet_var.get():
+            self.sheet_var.set(self.table.sheet)
         t = self.table
         self.status.set(f"Da nhan dien: {len(t.points)} diem, {len(t.rows)} dong tai, {len(t.patterns)} pattern (sheet: {t.sheet}).")
         # Treeview
@@ -239,7 +263,7 @@ class App(tk.Tk):
             rowf = ttk.Frame(self.match_inner)
             rowf.pack(fill="x", pady=2)
             ttk.Label(rowf, text=r.name + ("  (+/-)" if r.reversible else ""), width=48, anchor="w").pack(side="left")
-            cur = self.profile.pattern_map.get(r.name, "") or suggest_pattern(r.name, available)
+            cur = self.profile.pattern_for(r.name) or suggest_pattern(r.name, available)
             v = tk.StringVar(value=cur)
             ttk.Combobox(rowf, textvariable=v, values=choices, width=14).pack(side="left")
             self._pattern_vars[r.name] = v
@@ -406,8 +430,8 @@ class App(tk.Tk):
         if self.table:
             self.refresh_match_tab()
             for name, v in self._pattern_vars.items():
-                if name in self.profile.pattern_map:
-                    v.set(self.profile.pattern_map[name])
+                if self.profile.pattern_for(name):
+                    v.set(self.profile.pattern_for(name))
             for pt, v in self._alias_vars.items():
                 if pt in self.profile.point_alias:
                     v.set(self.profile.point_alias[pt])

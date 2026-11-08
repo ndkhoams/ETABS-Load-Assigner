@@ -153,6 +153,18 @@ class Profile:
     range_policy: str = "max_abs"  # max_abs | max | min | skip
     skip_zero_rows: bool = True
 
+    def pattern_for(self, row_name: str) -> str:
+        """Pattern ETABS cho 1 dong tai: khop dung ten truoc, roi khop
+        khong phan biet hoa/thuong (profile vi du luu key chu thuong,
+        assigner/GUI dung ten goc — khong khop la toan bo dong bi bo)."""
+        if row_name in self.pattern_map:
+            return self.pattern_map[row_name]
+        key = _norm_name(row_name)
+        for k, v in self.pattern_map.items():
+            if _norm_name(k) == key:
+                return v
+        return ""
+
     def to_dict(self):
         return {"version": self.version, "source_file": self.source_file,
                 "sheet": self.sheet, "axis": self.axis.to_dict(),

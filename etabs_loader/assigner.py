@@ -66,7 +66,7 @@ def build_assignments(table: FoundationTable, excel_point: str,
         return res
 
     for row in table.rows:
-        pattern = (profile.pattern_map.get(row.name) or "").strip()
+        pattern = (profile.pattern_for(row.name) or "").strip()
         if not pattern:
             res.skipped.append(("chua match pattern", f"'{row.name}' o {excel_point}: chua gan pattern ETABS."))
             continue
