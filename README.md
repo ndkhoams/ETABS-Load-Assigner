@@ -1,118 +1,152 @@
-# ETABS Load Assigner v0.1
+# ETABS Load Assigner — Plugin trong ETABS
 
-> **Từ 2026-11-08, sản phẩm chính là plugin C# trong thư mục `plugin/`
-> (nạp trong ETABS v22 qua Tools → Add/Show Plug-Ins, xem
-> `plugin/README.md`). Bản Python dưới đây được GIỮ NGUYÊN làm tài liệu
-> tham khảo và không phát triển thêm.**
+> **Lưu ý 2026-11-08:** Plugin C# (DLL riêng) đã gộp vào **Etabs Ultimate Tools** (tab "Load Assigner", repo `ndkhoams/Etabs_Plugin`, head `342b028`) — DLL riêng bị ETABS báo "Not Found" khi Add (nguyên nhân chưa rõ) nên không còn duy trì. App Python (`app.py`) giữ nguyên, không phát triển thêm (quyết 08/11). Hướng dẫn dưới đây chỉ còn giá trị tham khảo cho code đã gộp.
 
-Gán tải móng (foundation loads) từ file Excel/PDF của client vào ETABS,
-tự động — thay cho gán tay từng pattern từng điểm.
+Gán tải móng từ file Excel (bảng Foundation loads LONG PHU BC-5) vào model
+ETABS đang mở, chạy **trong ETABS** qua menu Tools — không phải app chạy ngoài.
 
-## 5 chức năng (theo yêu cầu)
+## Target — đã khóa
 
-1. **Chọn điểm gán tải** — tab 2: chọn điểm Excel (vd `20 / D`), ánh xạ
-   sang joint ETABS (mặc định cùng tên, sửa được), hoặc lấy joint đang
-   chọn trong model ETABS.
-2. **Phương & chiều** — tab 3: mỗi trục Excel (Hx, Hy, Vz) ánh xạ sang
-   trục global ETABS (X/Y/Z) + dấu +/−. Mặc định: `Hx -> +X, Hy -> +Y,
-   Vz -> -Z` (vì sơ đồ gốc ghi "+z down", ETABS +Z hướng lên).
-   **Dấu Hx/Hy không suy ra được từ ảnh — phải kiểm 1 điểm thật trước
-   khi gán hàng loạt** (xem `HUONG_DAN_TEST.md` mục 4).
-3. **Bảng match pattern** — tab 4: từng dòng tải Excel <-> pattern ETABS
-   (dropdown, có gợi ý tự động theo tên — chỉ là gợi ý, bạn chốt lại).
-   Pattern chưa có trong model: báo lỗi, hoặc tick "Tự tạo pattern".
-4. **Lưu cài đặt** — nút "Lưu profile..." (JSON): lưu axis mapping,
-   pattern map, point alias, các tùy chọn. Lần sau "Tải profile...",
-   chỉ đổi điểm gán.
-5. **Tự động nhận diện bảng** — tab 1: import `.xlsx` hoặc `.pdf`,
-   app tự tìm bảng `Foundation loads` (cụm Hx/Hy/Vz, mỗi điểm 3 cột)
-   và bảng `Load Pattern Definitions` (Name/Type/GUID). Cùng một hàm
-   nhận diện cho cả Excel lẫn PDF.
+- **ETABS v22, .NET Framework 4.8 + `ETABSv1.DLL`** — build theo đúng kiểu
+  Ultimate Tools (repo `Etabs_Plugin`), vì bản .NET 8 + `CSiAPIv1.DLL`
+  trước đây bị ETABS báo "Not Found" khi Add (đường dẫn đúng, file đúng,
+  mô phỏng nạp OK) nên đã bỏ hẳn từ 2026-11-08.
+- File `ETABSv1.dll` lấy từ **thư mục cài ETABS trên máy user**
+  (vd `C:\Program Files\Computers and Structures\ETABS 22\`) — project
+  trỏ thẳng tới đó, không cần chép đi đâu (fallback `lib/` nếu máy
+  không có ETABS). File này **KHÔNG có trong repo**
+  (nhị phân của CSI, `.gitignore` đã chặn `lib/*.dll`), và cũng
+  **KHÔNG đóng gói kèm DLL phát hành** (lúc chạy, ETABS đã nạp sẵn API này).
 
-## Quy tắc xử lý các ô đặc biệt (ghi rõ, không giấu)
-
-- Ô khoang `-3/+6`: mặc định lấy giá trị có |.| lớn nhất (+6), ghi chú
-  trong preview. Đổi được: max / min / bỏ qua (tab 4).
-- Hàng `+/-` (Imperfektion, Friction, Temperatur, Earthquake...):
-  mặc định chỉ gán chiều + như trong bảng; chọn `both` để tạo thêm
-  pattern `_NEG` chiều âm.
-- Hàng toàn 0: bỏ qua (ghi trong preview), không gán tải 0 vào model.
-- Bảng gốc chỉ có lực (Hx, Hy, Vz) — không có moment: Mx = My = Mz = 0.
-- Đơn vị: kN (theo `[kN]` trong bảng). App đặt `SetPresentUnits(6)`
-  = kN_m_C khi truyền qua API.
-
-## Chạy
+## Build
 
 ```bash
-pip install -r requirements.txt
-python -m pytest tests/ -q   # 9 test pass (fixture tổng hợp)
-python main.py
+# 1. (Khong can chep DLL — project tro thang toi thu muc cai ETABS;
+#    chi khi may khong co ETABS moi can ETABSv1.dll trong lib/)
+# 2. Build (can .NET 8 SDK de build net48 tren Linux, hoac VS 2022 tren Windows)
+dotnet build EtabsLoadAssigner.sln -c Release
+# 3. Lay file: src/EtabsLoadAssigner.Plugin/bin/Release/
+#    EtabsLoadAssignerPlugin.dll + EtabsLoadAssigner.Core.dll + ClosedXML.dll
+#    (+ DocumentFormat.OpenXml.dll...) — de TAT CA cung 1 thu muc khi nap
+#    vao ETABS (ETABSv1.dll KHONG co trong do — ETABS nap san).
 ```
 
-Build .exe trên Windows: `pip install pyinstaller` rồi `python build_exe.py`
--> `dist/ETABSLoadAssigner.exe`.
+Build trên Linux chỉ để kiểm tra biên dịch (cần file `ETABSv1.dll` thật
+trong `lib/` + PackageReference `Microsoft.NETFramework.ReferenceAssemblies`
+trên bản sao — xem AGENTS.md repo `Etabs_Plugin`); DLL chạy thật vẫn cần
+Windows + ETABS.
 
-## Cấu trúc
+## Cài đặt trong ETABS
 
-- `etabs_loader/detector.py` — nhận diện bảng Excel/PDF
-- `etabs_loader/mapping.py` — axis mapping, gợi ý pattern, profile JSON
-- `etabs_loader/assigner.py` — build danh sách gán + preview
-- `etabs_loader/etabs_api.py` — ETABS COM (comtypes) + Mock offline
-- `etabs_loader/app.py` — giao diện Tkinter (5 tab)
-- `examples/` — fixture tổng hợp LONG PHU BC-5 + profile ví dụ
-- `tests/` — test detector/assigner/mock/profile/PDF
+1. Mở ETABS (model cần gán tải).
+2. **Tools > Add/Show Plug-Ins...** > Browse tới `EtabsLoadAssignerPlugin.dll` > Add.
+3. Chạy bằng **Tools > ETABS Load Assigner**.
 
-## Giới hạn v0.1 — đọc trước khi dùng trên model thật
+## Sử dụng (5 tab, như app Python)
 
-- **Đã validate trên file thật 2026-11-08**: ban vẽ PDF
-  `BANG_NOI_LUC_0_qo1t.pdf` (3 tờ A0, SH.4/5/6) đã chuyển thành
-  `examples/BANG_NOI_LUC_BC-5A_B.xlsx` — 17 bảng, 183 điểm, 321 dòng,
-  10.908 ô (OCR + đối chiếu bằng mắt từng ô khả nghi). Detector đọc
-  khớp 17/17 sheet; test `tests/test_real_excel.py` (19 test) chạy trên
-  file thật này. File PDF gốc (20MB, nhị phân) không đẩy lên GitHub
-  được — giữ ở `tests/fixtures/` local.
-- **Chưa test trên ETABS thật**: tên hàm COM (`PointObj.SetLoadForce`,
-  `LoadPatterns.Add`, `SelectObj.GetSelected`) và mã enum loại pattern
-  **đã đối chiếu trực tiếp với `CSiAPIv1.dll` thật từ ETABS v22**
-  (2026-11-08) — nhưng chưa gọi lần nào trên model sống. Nếu hàm nào báo
-  lỗi trên máy thật, ghi lại thông báo + version ETABS để sửa.
-- **Gợi ý match pattern chưa được bạn xác nhận** (BC1=BC-5A, BT1=belt
-  tension, NX/NY=Imperfektion... suy từ tên gọi). Kiểm tra bảng match
-  trước khi gán.
-- Chỉ gán tải điểm (point load) tại joint — chưa gán tải lên frame/area,
-  chưa tạo load case/combo.
+1. **File & bảng** — Chọn file Excel `.xlsx` (mỗi bảng 1 sheet, chọn sheet
+   ở thanh trên) > Nhận diện bảng. Plugin **không đọc PDF** — file PDF bản
+   vẽ scan phải chuyển sang Excel trước (script `pdf_to_excel/` ở repo
+   app Python).
+2. **Điểm gán tải** — Chọn điểm Excel, sửa alias điểm -> joint ETABS nếu
+   tên joint trong model khác. Nút "Lấy điểm đang chọn trong ETABS" đọc
+   joint đang chọn trong model.
+3. **Phương & chiều** — Map Hx/Hy/Vz sang trục ETABS. Mặc định Hx->+X,
+   Hy->+Y, **Vz->-Z** (bản vẽ "+z down", ETABS +Z hướng lên).
+4. **Match pattern** — Gán từng dòng Excel sang pattern ETABS (gợi ý theo
+   tên chỉ là gợi ý, bạn chốt lại). Tick "Tự tạo pattern..." để plugin tự
+   tạo pattern chưa có trong model.
+5. **Preview & gán** — Xem trước rồi bấm **GÁN VÀO ETABS**
+   (`PointObj.SetLoadForce`, đơn vị kN, M = 0 vì bảng gốc chỉ có lực).
 
-## File thật — BẢNG NỘI LỰC LONG PHU BC-5 (2026-11-08)
+Cài đặt (axis, pattern, alias) lưu ra
+`%AppData%\EtabsLoadAssigner\profile.json` và tự tải lại lần sau
+(vì ETABS hủy đối tượng plugin giữa các lần gọi từ menu Tools).
 
-File Excel `examples/BANG_NOI_LUC_BC-5A_B.xlsx` chuyển từ bản vẽ PDF thật
-`BANG_NOI_LUC_0_qo1t.pdf` (FOUNDATION & LOADS SH.4/5/6, LONG PHU-1):
-17 bảng, 183 điểm, 321 dòng tải, 10.908 ô số — OCR (RapidOCR + OpenCV)
-+ đối chiếu bằng mắt từng ô khả nghi (xem `pdf_to_excel/` — script OCR,
-sửa tay có ghi chú). Mỗi bảng 1 sheet (tên SH4-T1...), chọn sheet ở
-thanh trên trước khi nhấn diện. Sheet `KIEM TRA` trong file Excel liệt
-kê các ô đã sửa tay + ghi chú (vd ô `+/- 1` ở bảng 90/D.1, khoang
-`67/-71` ở bảng 85.1).
+## Quy ước mặc định
 
-## Thay đổi v0.1.1 (đã push, head `609cb8c`)
+- Ô khoang `-3/+6`: lấy giá trị có `|.|` lớn nhất (`range_policy=max_abs`).
+- **Hàng ± gán CẢ 2 chiều (user chốt 08/11):** pattern gốc + pattern `_NEG`
+  đảo dấu (vd `EX` và `EX_NEG`), `reversible_mode="both"` mặc định.
+  Plugin cảnh báo rõ khi tạo `_NEG` — nhớ kiểm tra pattern `_NEG` có
+  trong model không (hoặc tick "Tự tạo pattern...").
+- **Tự tạo pattern thiếu (user chốt 08/11):** tick "Tự tạo pattern..."
+  (mặc định BẬT) thì pattern nào thiếu sẽ tự tạo trong model trước khi gán.
+  Pattern `_NEG` kế thừa **đúng loại của pattern gốc** (`EX_NEG` <- `EX`
+  Seismic, `NX_NEG` <- `NX` Notional, `WX+_NEG` <- `WX+` Wind,
+  `T_NEG` <- `T` Temperature=10);
+  pattern khác hoặc không tìm thấy gốc -> Other. Nếu `Add` lỗi thì tự
+  fallback về Other=8.
+  LƯU Ý: mã loại lấy theo enum `eLoadPatternType` (đã verify trên file
+  `CSiAPIv1.dll` thật; `ETABSv1.dll` dùng chung API — sẽ xác minh lại
+  khi có file) — bản
+  Python cũ ghi sai 3 mã (Notional=9, Rooflive=4, Temperature=8),
+  **đã sửa cả 2 bên ngày 08/11** sau khi đọc enum trực tiếp từ DLL.
+- Hàng toàn 0 bị bỏ qua (`skip_zero_rows=true`).
+- Ghi đè tải cũ cùng pattern tại điểm đó (`replace_existing=true`).
 
-- Chọn sheet khi file Excel có nhiều bảng (combobox ở thanh trên).
-- `detector.parse_cell`: ô viết `+/- 1` (bảng 90/D.1) parse ra 1.
-- `Profile.pattern_for`: match pattern không phân biệt hoa/thường —
-  profile ví dụ lưu key chữ thường, trước đây assigner bỏ qua toàn bộ
-  dòng vì không khớp tên (lỗi tìm được nhờ test trên file thật).
+## Cấu trúc repo
 
-## Thay đổi v0.1.2 (đang push)
+```
+EtabsLoadAssigner.sln
+src/EtabsLoadAssigner.Core/      netstandard2.0, KHONG phu thuoc CSI DLL
+  Detector.cs                    nhan dien bang tu .xlsx (ClosedXML)
+  Mapping.cs                     AxisMapping, Profile, suggest_pattern
+  Assigner.cs                    build_assignments + preview
+  EtabsApi.cs                    IEtabsApi + MockEtabs (test offline)
+                                 + PatternTypes (create_type_for / ma loai)
+src/EtabsLoadAssigner.Plugin/    net48 (WinForms) — theo kieu Ultimate Tools
+  cPlugin.cs                     cPlugin (chi Main, khong Info/contract)
+  RealEtabs.cs                   IEtabsApi tren SapModel song (ETABSv1)
+  MainForm.cs                    UI 5 tab
+tests/EtabsLoadAssigner.Core.Tests/   xUnit (net8.0) — chay tren fixture tong hop
+lib/                             ETABSv1.dll (fallback) + CSiAPIv1.dll (tham chieu)
+                                 — KHONG co trong repo, xem lib/README.md
+examples/profile_longphu_example.json   profile vi du (LONG PHU BC-5)
+```
 
-- **Hàng ± gán cả 2 chiều (user chốt)**: `reversible_mode="both"` mặc định
-  (app + profile ví dụ) — pattern gốc + pattern `_NEG` đảo dấu.
-- **Tự tạo pattern thiếu, đúng loại**: tick "Tự tạo pattern..." mặc định BẬT;
-  pattern `_NEG` kế thừa loại của pattern gốc (`EX_NEG` <- `EX` Seismic,
-  `NX_NEG` <- `NX` Notional, `T_NEG` <- `T` Temperature) qua
-  `etabs_api.create_type_for()`; fallback Other=8 nếu `Add` lỗi.
-- **Sửa mã loại pattern (đối chiếu `CSiAPIv1.dll` thật, ETABS v22)**:
-  Notional=12 (bản cũ ghi 9 — 9 là Move!), Rooflive=11 (bản cũ 4 =
-  ReduceLive), Temperature=10 (bản cũ 8).
-- **Sửa 3 lỗi chữ ký `RealEtabs` (đối chiếu DLL thật)**: `GetLoadType`
-  chỉ trả 1 out, `GetLabelFromName` chỉ 2 out, thuộc tính đúng là
-  `SelectObj` (không phải `Select`).
-- Test: 30/30 pass (9 cũ + 19 file thật + 2 mới cho auto-create `_NEG`).
+## Trạng thái kiểm chứng — đọc trước khi dùng trên model thật
+
+- **Core (netstandard2.0) + test: build OK 0 warning / 0 error, test 21/21 pass**
+  (2026-11-08, sau khi chuyển từ net8.0 sang netstandard2.0 để dùng chung
+  với Plugin net48; chỉ sửa 4 chỗ tương thích API: Substring thay `..`/`^`,
+  `.Cast<Match>()` cho `MatchCollection`, bỏ deconstruct `KeyValuePair`).
+- **Plugin (net48): CHƯA build xong — đang chờ file `ETABSv1.dll` thật**
+  từ máy user để build kiểm chứng (project trỏ tới đường dẫn cài ETABS,
+  fallback `lib/ETABSv1.dll`). Build trên Linux cần thêm
+  `Microsoft.NETFramework.ReferenceAssemblies` trên bản sao (xem AGENTS.md
+  repo `Etabs_Plugin`).
+- **Test: 21/21 pass** (6 Detector + 15 Assigner, gồm 4 test mới cho
+  auto-create `_NEG`: `CreateTypeFor_InheritsBaseType`,
+  `CreateTypeFor_TypeToCode`, `MockEtabs_CreatePattern_WithTypeCode`,
+  `MockAssign_AutoCreateNegPatterns_ThenAssignAll`).
+  LƯU Ý: `dotnet test` (vstest) **không chạy được trên VM Linux dev này**
+  — testhost khởi động nhưng không bao giờ bắt tay xong (thử 3 lần, timeout
+  90/300/600s đều abort; loopback vẫn OK, có thể do VM thiếu RAM/tràn swap).
+  21 test trên được chạy trực tiếp bằng 1 console runner nhỏ (load DLL test
+  đã build, gọi từng `[Fact]` với instance mới + Dispose như xUnit),
+  21/21 pass trong ~3s. Trên máy Windows của user, `dotnet test` chạy bình
+  thường — nên chạy lại 1 lần để lấy log chuẩn.
+  Test chạy trên **fixture tổng hợp** chép tay từ ảnh — bằng chứng yếu;
+  parity với file Excel thật đã chạy riêng (17 bảng / 183 điểm / 321 dòng,
+  khớp từng chữ số với app Python): điểm 20/D bảng SH4-T1 ra đúng
+  18 assignment; **tự tạo đúng 6 pattern `_NEG`** (EX/EY/EZ_NEG Seismic,
+  NX/NY_NEG Notional, T_NEG Temperature) rồi gán đủ 18 tải — **PARITY: ALL PASS**.
+- **Plugin DLL (bản net48) chưa build xong — đang chờ `ETABSv1.dll` thật**,
+  và **chưa từng chạy trong ETABS thật**: `SetLoadForce`, `GetSelected`,
+  `GetAllPoints`... chưa gọi lần nào trên model sống.
+- Đã đối chiếu chữ ký hàm với file DLL thật (không đoán theo bản Python),
+  và **bản Python đã sửa theo ngày 08/11** (3 lỗi chữ ký + 3 mã loại):
+  - `LoadPatterns.GetLoadType` chỉ trả về `MyType` (bản Python cũ unpack 4 giá trị
+    — lỗi bị `except` nuốt nên type pattern luôn rỗng, `_NEG` sẽ toàn về Other).
+  - `PointObj.GetLabelFromName(Name, ref Label, ref Story)` — chỉ 2 out
+    (bản Python cũ unpack 4 — lỗi bị nuốt, label rớt về tên joint).
+  - Mã loại pattern `eLoadPatternType`: `Rooflive=11` (Python ghi 4),
+    `Temperature=10` (Python ghi 8), `Notional=12` (Python ghi 9);
+    `SetLoadForce(..., Replace)` mặc định là **False** — code luôn truyền rõ.
+  - `SapModel.SelectObj` (không phải `.Select` như comtypes gọi tắt —
+    bản Python cũ sẽ crash khi lấy điểm đang chọn).
+- **BẮT BUỘC trước khi gán hàng loạt:** kiểm dấu 1 điểm thật (gán chỉ DLS
+  ở 1 joint, xem Fz có âm không) theo `HUONG_DAN_TEST.md` mục 1 ở repo app
+  Python. Gợi ý match pattern (BC1=BC-5A, BT1=belt tension, NX/NY=...) chỉ
+  suy từ tên, chưa được user xác nhận.
