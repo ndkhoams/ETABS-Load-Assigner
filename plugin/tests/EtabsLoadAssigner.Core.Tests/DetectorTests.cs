@@ -36,6 +36,12 @@ public sealed class DetectorTests : IDisposable
         Assert.Equal(LoadValueKind.Range, lv2.Kind);
         Assert.Equal(67, lv2.VMin);
         Assert.Equal(-71, lv2.VMax);
+
+        // So thu 2 khong dau "+" van la khoang (vd "-50/48" trong anh bang goc).
+        var lv3 = Detector.ParseCell("-50/48");
+        Assert.Equal(LoadValueKind.Range, lv3.Kind);
+        Assert.Equal(-50, lv3.VMin);
+        Assert.Equal(48, lv3.VMax);
     }
 
     [Fact]
@@ -52,13 +58,22 @@ public sealed class DetectorTests : IDisposable
     }
 
     [Fact]
-    public void ParseCell_PlusMinusPrefix_TakesMagnitude()
+    public void ParseCell_PlusMinusPrefix_TwoValues()
     {
-        // O viet "+/- 1" (bang 90/D.1 trong file that): gia tri dao chieu, lay do lon.
-        Assert.Equal(1, Detector.ParseCell("+/- 1").Value);
-        Assert.Equal(0, Detector.ParseCell("-/+ 0").Value);
-        Assert.Equal(1, Detector.ParseCell("± 1").Value);
-        Assert.Equal("+/- 1", Detector.ParseCell("+/- 1").Raw); // raw goc giu lai
+        // O viet "+/- 1" (bang 90/D.1 trong file that): gia tri 1 = -1, gia tri 2 = +1 (user chot 08/11).
+        var lv = Detector.ParseCell("+/- 1");
+        Assert.Equal(LoadValueKind.Range, lv.Kind);
+        Assert.Equal(-1, lv.VMin);
+        Assert.Equal(1, lv.VMax);
+        Assert.Equal("+/- 1", lv.Raw); // raw goc giu lai
+        Assert.Equal(LoadValueKind.Range, Detector.ParseCell("+/-1").Kind);
+        Assert.Equal(-57, Detector.ParseCell("+/- 57").VMin);
+        Assert.Equal(57, Detector.ParseCell("+/- 57").VMax);
+        Assert.Equal(LoadValueKind.Range, Detector.ParseCell("± 1").Kind);
+        Assert.Equal(-10, Detector.ParseCell("+ / -10").VMin); // ke ca khoang trang
+        Assert.Equal(10, Detector.ParseCell("+ / -10").VMax);
+        Assert.Equal(0, Detector.ParseCell("-/+ 0").VMin);
+        Assert.Equal(0, Detector.ParseCell("-/+ 0").VMax);
     }
 
     [Fact]

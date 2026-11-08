@@ -20,7 +20,8 @@ public sealed class AssignerTests : IDisposable
         try { Directory.Delete(_tmpDir, recursive: true); } catch { /* best effort */ }
     }
 
-    // Match 2 cot: trai = gia tri nho / gia tri don, phai = gia tri lon (chi khi co +/-).
+    // Match 2 cot: trai = gia tri 1 / gia tri don, phai = gia tri 2 (chi khi o co 2 gia tri).
+    // Cot "+/-" cua bang KHONG anh huong den gia tri (user chot 08/11).
     private static Profile TestProfile()
     {
         var p = new Profile();
@@ -75,29 +76,32 @@ public sealed class AssignerTests : IDisposable
     }
 
     [Fact]
-    public void Assigner_Reversible_TwoColumns_LeftNegRightPos()
+    public void Assigner_ReversibleColumn_Ignored_SingleValue()
     {
-        // Hang +/-: cot trai nhan -V (gia tri nho), cot phai nhan +V (gia tri lon).
+        // Cot "+/-" cua bang KHONG anh huong den gia tri gan (user chot 08/11):
+        // hang +/- co so don chi gan 1 gia tri (cot trai), khong tach -V/+V.
         var t = Detector.DetectExcel(_fixture);
         var res = Assigner.BuildAssignments(t, "20 / D", "20 / D", TestProfile());
         var byPat = res.Assignments.ToDictionary(a => a.Pattern);
-        // Imperfektion X V=(-1,0,0): trai -V=(1,0,0) -> NX; phai +V=(-1,0,0) -> NX_NEG.
-        Assert.Equal(1, byPat["NX"].Fx);
+        // Imperfektion X V=(-1,0,0): chi NX = (-1,0,0), khong co NX_NEG.
+        Assert.Equal(-1, byPat["NX"].Fx);
         Assert.Equal("trai", byPat["NX"].Side);
-        Assert.Equal(-1, byPat["NX_NEG"].Fx);
-        Assert.Equal("phai", byPat["NX_NEG"].Side);
-        // Imperfektion Y V=(0,0,-1): trai -V=(0,0,1) -> Fz=-1 (Vz -> -Z); phai +V=(0,0,-1) -> Fz=+1.
-        Assert.Equal(-1, byPat["NY"].Fz);
-        Assert.Equal(1, byPat["NY_NEG"].Fz);
-        // Earthquake X V=(1,-1,1): trai -V=(-1,1,-1) -> Fx=-1, Fy=1, Fz=1; phai +V=(1,-1,1) -> Fx=1, Fy=-1, Fz=-1.
-        Assert.Equal((-1, 1, 1), (byPat["EX"].Fx, byPat["EX"].Fy, byPat["EX"].Fz));
-        Assert.Equal((1, -1, -1), (byPat["EX_NEG"].Fx, byPat["EX_NEG"].Fy, byPat["EX_NEG"].Fz));
+        Assert.DoesNotContain(res.Assignments, a => a.Pattern == "NX_NEG");
+        // Imperfektion Y V=(0,0,-1): chi NY, Fz = +1 (Vz -> -Z), khong co NY_NEG.
+        Assert.Equal(1, byPat["NY"].Fz);
+        Assert.DoesNotContain(res.Assignments, a => a.Pattern == "NY_NEG");
+        // Earthquake X V=(1,-1,1): chi EX = (1,-1,-1), khong co EX_NEG.
+        Assert.Equal((1, -1, -1), (byPat["EX"].Fx, byPat["EX"].Fy, byPat["EX"].Fz));
+        Assert.DoesNotContain(res.Assignments, a => a.Pattern == "EX_NEG");
+        // Temperatur V=(0,-1,0): chi T, khong co T_NEG.
+        Assert.Equal((0, -1, 0), (byPat["T"].Fx, byPat["T"].Fy, byPat["T"].Fz));
+        Assert.DoesNotContain(res.Assignments, a => a.Pattern == "T_NEG");
     }
 
     [Fact]
-    public void Assigner_Range_SplitsMinMax()
+    public void Assigner_Range_FirstSecond()
     {
-        // O khoang "-3/+6": cot trai nhan min (-3), cot phai nhan max (+6).
+        // O khoang "-3/+6": cot trai nhan gia tri 1 (-3), cot phai nhan gia tri 2 (+6).
         var t = Detector.DetectExcel(_fixture);
         var res = Assigner.BuildAssignments(t, "20 / D", "20 / D", TestProfile());
         var wy = res.Assignments.Where(a => a.ExcelRow == "Wind -Y").ToList();
@@ -112,27 +116,55 @@ public sealed class AssignerTests : IDisposable
     }
 
     [Fact]
+    public void Assigner_Range_FirstSecond_NotMinMax()
+    {
+        // Khoang "67/-71": gia tri 1 = 67 (lon hon), gia tri 2 = -71 — KHONG phai min/max.
+        var t = new FoundationTable();
+        t.Points.Add("20 / D");
+        var row = new FoundationRow { Name = "Wind +Y" };
+        row.Values["20 / D"] = new Dictionary<string, LoadValue>
+        {
+            ["Hx"] = new LoadValue { Raw = "0", Kind = LoadValueKind.Number, Value = 0 },
+            ["Hy"] = new LoadValue { Raw = "0", Kind = LoadValueKind.Number, Value = 0 },
+            ["Vz"] = new LoadValue { Raw = "67/-71", Kind = LoadValueKind.Range, VMin = 67, VMax = -71 },
+        };
+        t.Rows.Add(row);
+        var p = new Profile();
+        p.PatternMap["Wind +Y"] = new RowPattern { Left = "WY+1", Right = "WY+2" };
+        var res = Assigner.BuildAssignments(t, "20 / D", "20 / D", p);
+        Assert.Equal(2, res.Assignments.Count);
+        var left = res.Assignments.Single(a => a.Side == "trai");
+        var right = res.Assignments.Single(a => a.Side == "phai");
+        Assert.Equal("WY+1", left.Pattern);
+        Assert.Equal("WY+2", right.Pattern);
+        // Vz -> -Z: trai Fz = -67 (gia tri 1), phai Fz = +71 (gia tri 2).
+        Assert.Equal((0, 0, -67), (left.Fx, left.Fy, left.Fz));
+        Assert.Equal((0, 0, 71), (right.Fx, right.Fy, right.Fz));
+    }
+
+    [Fact]
     public void Assigner_TwoColumns_Count()
     {
-        // 12 dong co luc (cot trai) + 7 ban cot phai (6 hang +/- + 1 o khoang Wind -Y) = 19.
+        // 12 dong co luc (cot trai) + 1 ban cot phai (o khoang Wind -Y Vz "-3/+6") = 13.
+        // 6 hang +/- (Imperfektion X/Y, Temperatur, Earthquake X/Y/Z) chi gan 1 gia tri — cot "+/-" khong tach.
         var t = Detector.DetectExcel(_fixture);
         var res = Assigner.BuildAssignments(t, "20 / D", "20 / D", TestProfile());
-        Assert.Equal(19, res.Assignments.Count);
+        Assert.Equal(13, res.Assignments.Count);
         Assert.Equal(12, res.Assignments.Count(a => a.Side == "trai"));
-        Assert.Equal(7, res.Assignments.Count(a => a.Side == "phai"));
+        Assert.Equal(1, res.Assignments.Count(a => a.Side == "phai"));
     }
 
     [Fact]
     public void Assigner_RightPatternMissing_WarnsOnlyLeftAssigned()
     {
-        // Dong +/- nhung chua chon pattern cot phai: chi gan cot trai + canh bao.
+        // Dong co o 2 gia tri (Wind -Y Vz "-3/+6") nhung chua chon pattern cot phai: chi gan cot trai + canh bao.
         var t = Detector.DetectExcel(_fixture);
         var p = TestProfile();
-        p.PatternMap["Imperfektion X"] = new RowPattern { Left = "NX", Right = "" };
+        p.PatternMap["Wind -Y"] = new RowPattern { Left = "WY-1", Right = "" };
         var res = Assigner.BuildAssignments(t, "20 / D", "20 / D", p);
-        Assert.Contains(res.Assignments, a => a.Pattern == "NX");
-        Assert.DoesNotContain(res.Assignments, a => a.Pattern == "NX_NEG");
-        Assert.Contains(res.Warnings, w => w.Contains("Imperfektion X") && w.Contains("cột phải"));
+        Assert.Contains(res.Assignments, a => a.Pattern == "WY-1");
+        Assert.DoesNotContain(res.Assignments, a => a.Pattern == "WY+2");
+        Assert.Contains(res.Warnings, w => w.Contains("Wind -Y") && w.Contains("cột phải"));
     }
 
     [Fact]
@@ -214,8 +246,9 @@ public sealed class AssignerTests : IDisposable
         var v = mock.GetAssignment("20 / D", "DLS");
         Assert.NotNull(v);
         Assert.Equal(new double[] { 0, -2, -19, 0, 0, 0 }, v);
-        Assert.Equal(new double[] { -1, 0, 0, 0, 0, 0 }, mock.GetAssignment("20 / D", "NX_NEG"));
-        Assert.Equal(new double[] { 1, 0, 0, 0, 0, 0 }, mock.GetAssignment("20 / D", "NX"));
+        // Imperfektion X chi gan 1 gia tri (-1,0,0) vao NX; NX_NEG khong duoc gan (cot "+/-" khong tach).
+        Assert.Equal(new double[] { -1, 0, 0, 0, 0, 0 }, mock.GetAssignment("20 / D", "NX"));
+        Assert.Null(mock.GetAssignment("20 / D", "NX_NEG"));
         // Ghi de: gan lai chi giu 1 ban.
         mock.AssignForce("20 / D", "DLS", new double[] { 0, -2, -19, 0, 0, 0 }, replace: true);
         Assert.Single(mock.Assignments, a => a.Pattern == "DLS");
