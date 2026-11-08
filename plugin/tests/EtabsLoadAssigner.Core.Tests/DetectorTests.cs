@@ -115,6 +115,23 @@ public sealed class DetectorTests : IDisposable
     }
 
     [Fact]
+    public void ProfileSheet_RefusesEmptyTable()
+    {
+        // Loi truoc day (user bao 08/11, anh build 195953): tu dong luu khi
+        // bang chua nhan dien xong (vd sheet README 0 dong) de ghi de sheet
+        // "LoadAssigner" thanh trang (chi con header + phuong-chieu). Gio
+        // WriteProfileSheet TU CHOI ghi neu bang rong — UI cung chan truoc
+        // khi goi (nut Luu bao loi, khong ghi).
+        string copy = Path.Combine(_tmpDir, "empty.xlsx");
+        File.Copy(_fixture, copy);
+        var empty = new FoundationTable { Title = "rong", Sheet = "README" };
+        Assert.Throws<InvalidOperationException>(() =>
+            Detector.WriteProfileSheet(copy, new Profile(), empty));
+        // Sheet cu (neu co) khong bi xoa khi ghi bi tu choi.
+        Assert.Null(Detector.ReadProfileSheet(copy));
+    }
+
+    [Fact]
     public void ProfileSheet_RoundTrip()
     {
         // Chua co sheet -> ReadProfileSheet tra null.
