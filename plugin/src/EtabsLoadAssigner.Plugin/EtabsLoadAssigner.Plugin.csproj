@@ -25,22 +25,18 @@
     <ProjectReference Include="..\EtabsLoadAssigner.Core\EtabsLoadAssigner.Core.csproj" />
     <!-- Thu vien API cua CSI: uu tien duong dan cai dat ETABS tren may
          (khong can copy DLL di dau) — neu may khong co ETABS thi roi ve
-         ban copy trong lib/. Ca 2 truong hop deu Private=True (mac dinh,
-         giong Ultimate Tools): ETABSv1.dll DUOC copy ra output, vi
-         ETABS nap plugin bang LoadFrom + soi chu ky Main nen can thay
-         ETABSv1.dll ngay trong thu muc plugin (no khong co trong GAC).
-         Ban cu de Private=False nen thu muc plugin thieu ETABSv1.dll
-         -> ETABS bao "Not Found" du DLL chinh nap tot (LoadTest
-         chung minh ngay 08/11). -->
+         ban copy trong lib/. Ca 2 truong hop deu Private=False:
+         KHONG copy ETABSv1.dll ra output (ETABS da nap san API nay).
+         EmbedInteropTypes=false giong Ultimate Tools. -->
     <Reference Include="ETABSv1" Condition="Exists('C:\Program Files\Computers and Structures\ETABS 22\ETABSv1.dll')">
       <HintPath>C:\Program Files\Computers and Structures\ETABS 22\ETABSv1.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
-      <Private>True</Private>
+      <Private>False</Private>
     </Reference>
     <Reference Include="ETABSv1" Condition="!Exists('C:\Program Files\Computers and Structures\ETABS 22\ETABSv1.dll')">
       <HintPath>..\..\lib\ETABSv1.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
-      <Private>True</Private>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
 
