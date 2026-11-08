@@ -245,6 +245,6 @@ public sealed class AssignerTests : IDisposable
         string text = Assigner.PreviewText(t, "20 / D", p, res);
         Assert.Contains("DLS", text);
         Assert.Contains("WY+1", text);
-        Assert.Contains("Tong theo pattern:", text);
+        Assert.Contains("Tổng theo pattern:", text);
     }
 }
