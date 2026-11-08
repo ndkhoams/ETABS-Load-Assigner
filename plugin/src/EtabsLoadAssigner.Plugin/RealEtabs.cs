@@ -1,14 +1,15 @@
-using CSiAPIv1;
+using ETABSv1;
 using EtabsLoadAssigner.Core;
 
 namespace EtabsLoadAssigner.Plugin;
 
 /// <summary>
-/// Ket noi ETABS that qua CSiAPIv1 tren SapModel song do cPlugin.Main nhan.
+/// Ket noi ETABS that qua ETABSv1 tren SapModel song do cPlugin.Main nhan.
 /// KHONG attach COM, KHONG mo ETABS moi — model dang mo san.
 ///
 /// MOI CHU KY HAM duoi day lay truc tiep tu file CSiAPIv1.dll that
-/// (ETABS v22 cua user), khong doan theo ban Python:
+/// (ETABS v22 cua user) truoc day, va API ETABSv1 co cung chu ky —
+/// can xac minh lai enum eLoadPatternType tu ETABSv1.dll that khi co file:
 ///   - SapModel.SelectObj (khong phai ".Select" nhu comtypes goi tat)
 ///   - LoadPatterns.GetLoadType chi tra ve MyType (khong co 4 gia tri
 ///     nhu code Python unpack — SelfWTMultiplier lay rieng bang
@@ -16,7 +17,8 @@ namespace EtabsLoadAssigner.Plugin;
 ///   - PointObj.GetLabelFromName(Name, ref Label, ref Story) — chi 2 out
 ///   - PointObj.SetLoadForce(..., Replace = False MAC DINH) — phai truyen ro
 ///   - PointObj.GetAllPoints / GetLabelNameList: lay het 1 lenh
-///   - eLoadPatternType that: Rooflive=11, Temperature=10, Notional=12
+///   - eLoadPatternType (da verify tren CSiAPIv1.dll): Rooflive=11,
+///     Temperature=10, Notional=12
 ///     (ban Python ghi sai 4/11/8/9 — xem LoadTypeCode)
 /// </summary>
 public sealed class RealEtabs : IEtabsApi

@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- netstandard2.0: dung chung duoc ca tu Plugin net48 (ETABS) va tu test net8.0.
+         (Truoc day net8.0 — doi theo kieu build cua Ultimate Tools, 2026-11-08.) -->
+    <TargetFramework>netstandard2.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
@@ -11,6 +13,9 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <!-- System.Text.Json khong co san trong netstandard2.0 — lay qua NuGet
+         (ban 8.0.x van ho tro netstandard2.0). -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
 </Project>

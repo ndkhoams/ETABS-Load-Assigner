@@ -318,12 +318,12 @@ public sealed class MainForm : Form
         if (_table is not null)
         {
             RefreshMatchTab();
-            foreach (var (name, combo) in _patternControls)
-                if (_profile.PatternFor(name) != "")
-                    combo.Text = _profile.PatternFor(name);
-            foreach (var (pt, tb) in _aliasControls)
-                if (_profile.PointAlias.TryGetValue(pt, out string? a))
-                    tb.Text = a;
+            foreach (var kv in _patternControls)
+                if (_profile.PatternFor(kv.Key) != "")
+                    kv.Value.Text = _profile.PatternFor(kv.Key);
+            foreach (var kv in _aliasControls)
+                if (_profile.PointAlias.TryGetValue(kv.Key, out string? a))
+                    kv.Value.Text = a;
         }
         UpdateAxisExample();
     }

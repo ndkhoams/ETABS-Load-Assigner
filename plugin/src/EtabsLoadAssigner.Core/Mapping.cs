@@ -155,10 +155,10 @@ public static class Mapping
         // Cham diem theo token chung (vd 'wind +x' trung 'wx+').
         string best = "";
         int bestScore = 0;
-        var tokens = new HashSet<string>(Regex.Matches(key, "[a-z0-9]+").Select(m => m.Value));
+        var tokens = new HashSet<string>(Regex.Matches(key, "[a-z0-9]+").Cast<Match>().Select(m => m.Value));
         foreach (string pat in available)
         {
-            var ptokens = new HashSet<string>(Regex.Matches(pat.ToLowerInvariant(), "[a-z0-9]+").Select(m => m.Value));
+            var ptokens = new HashSet<string>(Regex.Matches(pat.ToLowerInvariant(), "[a-z0-9]+").Cast<Match>().Select(m => m.Value));
             int score = tokens.Intersect(ptokens).Count();
             if (key.Contains(pat.ToLowerInvariant()))
                 score += 2;

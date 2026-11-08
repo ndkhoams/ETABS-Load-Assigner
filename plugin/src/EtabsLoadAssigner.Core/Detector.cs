@@ -72,7 +72,7 @@ public static class Detector
         // O viet "+/- 1" / "-/+ 0": gia tri dao chieu, lay do lon; dau +/- goc giu trong raw.
         if (s.StartsWith("+/-") || s.StartsWith("-/+") || s.StartsWith("±"))
         {
-            string rest = (s.StartsWith("+/-") || s.StartsWith("-/+")) ? s[3..].Trim() : s[1..].Trim();
+            string rest = (s.StartsWith("+/-") || s.StartsWith("-/+")) ? s.Substring(3).Trim() : s.Substring(1).Trim();
             double? n = TryNum(rest);
             if (n is not null)
                 return new LoadValue { Raw = s, Kind = LoadValueKind.Number, Value = n.Value };

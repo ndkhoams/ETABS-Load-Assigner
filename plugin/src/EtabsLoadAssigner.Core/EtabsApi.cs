@@ -33,7 +33,9 @@ public sealed class PointInfo
 
 /// <summary>
 /// Ma loai pattern theo CSI eLoadPatternType — VERIFIED truc tiep tu file
-/// CSiAPIv1.dll that (ETABS v22 cua user, enum eLoadPatternType, 2026-11-08).
+/// CSiAPIv1.dll that (ETABS v22 cua user, enum eLoadPatternType, 2026-11-08);
+/// ETABSv1.dll dung chung API nen ma so giong het — se xac minh lai khi co
+/// file ETABSv1.dll that.
 /// Ban Python cu ghi sai 3 ma (da sua ngay 08/11): Roof Live=4 (thuc te
 /// ReduceLive=4, Rooflive=11), Temperature=8 (thuc te 10), Notional=9
 /// (thuc te 12 — 9 la Move). Chi co Other=8 la dung tu dau.
@@ -67,7 +69,8 @@ public static class LoadTypeCode
 ///     T_NEG &lt;- T 'Temperature'=10); pattern khac hoac khong tim thay
 ///     goc -&gt; Other=8. Quy tac ke thua nay giong het ban Python sau khi
 ///     sua ma enum ngay 08/11 (truoc do ban Python ghi sai 3 ma).
-///   - Ma so dung enum eLoadPatternType trong CSiAPIv1.dll that (da verify):
+///   - Ma so dung enum eLoadPatternType (da verify tren CSiAPIv1.dll that;
+///     ETABSv1.dll dung chung API — se xac minh lai khi co file):
 ///     Notional=12 (9 la Move!), Rooflive=11 (4 la ReduceLive),
 ///     Temperature=10. Chi co Other=8 la giong ban Python cu.
 /// </summary>
@@ -107,7 +110,7 @@ public static class PatternTypes
     {
         if (patternName.EndsWith(NegSuffix, StringComparison.Ordinal))
         {
-            string baseName = patternName[..^NegSuffix.Length];
+            string baseName = patternName.Substring(0, patternName.Length - NegSuffix.Length);
             foreach (var p in existingPatterns)
             {
                 if (p.Name == baseName)

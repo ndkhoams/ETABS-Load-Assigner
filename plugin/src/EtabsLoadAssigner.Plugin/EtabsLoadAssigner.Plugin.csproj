@@ -1,51 +1,42 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- Build theo dung kieu Ultimate Tools (repo Etabs_Plugin, da chung minh
+         nap duoc tren ETABS v22): .NET Framework 4.8 + ETABSv1.dll.
+         Ban .NET 8 + CSiAPIv1 truoc day bi ETABS bao "Not Found" khi Add
+         (duong dan dung, file dung, mo phong nap OK) — bo han, khong quay lai.
+         (Doi 2026-11-08, theo quyet dinh cua user: giu DLL rieng, build kieu net48.) -->
+    <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
-    <!-- Cho phep build tren Linux (may dev): chi dung de kiem tra bien dich;
-         DLL chay that van phai build / chay tren Windows co ETABS. -->
-    <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <!-- BAT BUOC theo huong dan CSI (.NET 8 Plugin Example, buoc 5):
-         khong co dong nay, ETABS khong nap duoc plugin — bao loi
-         "Cannot create plugin. Value cannot be null. (Parameter 'type')"
-         khi bam menu Tools (gap that 2026-11-08, ETABS v22). -->
-    <EnableDynamicLoading>true</EnableDynamicLoading>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <!-- Code goc viet dung implicit usings (System, Collections.Generic,
+         Linq...) — giu nguyen, khong phai them using tay vao tung file. -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Library</OutputType>
+    <PlatformTarget>x64</PlatformTarget>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
     <AssemblyName>EtabsLoadAssignerPlugin</AssemblyName>
     <RootNamespace>EtabsLoadAssigner.Plugin</RootNamespace>
-    <!--
-      Plugin chay trong tien trinh ETABS: CSiAPIv1.dll KHONG duoc copy ra
-      thu muc output (Private=False) va KHONG duoc dong goi kem khi phat
-      hanh — luc chay, ETABS da nap san API nay.
-      Target: ETABS v22 tro len (.NET 8 + CSiAPIv1).
-    -->
-    <!-- CopyLocalLockFileAssemblies=true: de ClosedXML (+ DocumentFormat.OpenXml...)
-         duoc copy ra output cung plugin DLL — ETABS chi probe thu muc chua DLL
-         plugin, khong biet doc deps.json. Khong co dong nay, luc mo file Excel
-         se loi FileNotFoundException. -->
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EtabsLoadAssigner.Core\EtabsLoadAssigner.Core.csproj" />
     <!-- Thu vien API cua CSI: uu tien duong dan cai dat ETABS tren may
-         (khong can copy DLL di dau) — neu may khong co ETABS (vd may dev
-         Linux) thi roi ve ban copy trong lib/. Ca 2 truong hop deu
-         Private=False + ExcludeAssets=runtime: KHONG copy CSiAPIv1.dll ra
-         output (ETABS da nap san API nay; neu co trong thu muc plugin thi
-         luc chay se loi type). -->
-    <Reference Include="CSiAPIv1" Condition="Exists('C:\Program Files\Computers and Structures\ETABS 22\CSiAPIv1.dll')">
-      <HintPath>C:\Program Files\Computers and Structures\ETABS 22\CSiAPIv1.dll</HintPath>
+         (khong can copy DLL di dau) — neu may khong co ETABS thi roi ve
+         ban copy trong lib/. Ca 2 truong hop deu Private=False:
+         KHONG copy ETABSv1.dll ra output (ETABS da nap san API nay).
+         EmbedInteropTypes=false giong Ultimate Tools. -->
+    <Reference Include="ETABSv1" Condition="Exists('C:\Program Files\Computers and Structures\ETABS 22\ETABSv1.dll')">
+      <HintPath>C:\Program Files\Computers and Structures\ETABS 22\ETABSv1.dll</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
     </Reference>
-    <Reference Include="CSiAPIv1" Condition="!Exists('C:\Program Files\Computers and Structures\ETABS 22\CSiAPIv1.dll')">
-      <HintPath>..\..\lib\CSiAPIv1.dll</HintPath>
+    <Reference Include="ETABSv1" Condition="!Exists('C:\Program Files\Computers and Structures\ETABS 22\ETABSv1.dll')">
+      <HintPath>..\..\lib\ETABSv1.dll</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
       <Private>False</Private>
-      <ExcludeAssets>runtime</ExcludeAssets>
     </Reference>
   </ItemGroup>
 

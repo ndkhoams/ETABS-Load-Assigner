@@ -140,8 +140,8 @@ public static class Assigner
         }
         lines.Add("");
         lines.Add("Tong theo pattern:");
-        foreach (var (pat, tot) in result.TotalsByPattern().OrderBy(kv => kv.Key))
-            lines.Add($"  {pat,-10} Fx={tot.Fx,8:F2}  Fy={tot.Fy,8:F2}  Fz={tot.Fz,8:F2}  ({tot.Count} dong)");
+        foreach (var kv in result.TotalsByPattern().OrderBy(k => k.Key))
+            lines.Add($"  {kv.Key,-10} Fx={kv.Value.Fx,8:F2}  Fy={kv.Value.Fy,8:F2}  Fz={kv.Value.Fz,8:F2}  ({kv.Value.Count} dong)");
         if (result.Skipped.Count > 0)
         {
             lines.Add("");
