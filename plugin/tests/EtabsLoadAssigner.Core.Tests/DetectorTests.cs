@@ -113,4 +113,43 @@ public sealed class DetectorTests : IDisposable
         Assert.Throws<NotSupportedException>(() => Detector.DetectFile("x.xls"));
         Assert.Throws<NotSupportedException>(() => Detector.DetectFile("x.txt"));
     }
+
+    [Fact]
+    public void ProfileSheet_RoundTrip()
+    {
+        // Chua co sheet -> ReadProfileSheet tra null.
+        Assert.Null(Detector.ReadProfileSheet(_fixture));
+        var table = Detector.DetectFile(_fixture);
+        var profile = new Profile();
+        profile.PatternMap["Dead loads"] = new RowPattern { Left = "DLS", Right = "" };
+        profile.PatternMap["Wind +Y"] = new RowPattern { Left = "WY+1", Right = "WY+2" };
+        profile.Axis.HxAxis = "X"; profile.Axis.HxSign = +1;
+        profile.Axis.HyAxis = "Y"; profile.Axis.HySign = +1;
+        profile.Axis.VzAxis = "Z"; profile.Axis.VzSign = -1;
+        profile.ReplaceExisting = true;
+        // Ghi vao 1 ban sao (khong sua fixture goc).
+        string copy = Path.Combine(_tmpDir, "copy.xlsx");
+        File.Copy(_fixture, copy);
+        Detector.WriteProfileSheet(copy, profile, table);
+        // Doc lai: match + phuong-chieu + ghi de phai khop.
+        var back = Detector.ReadProfileSheet(copy);
+        Assert.NotNull(back);
+        Assert.Equal("DLS", back!.PatternFor("Dead loads").Left);
+        Assert.Equal("", back.PatternFor("Dead loads").Right);
+        Assert.Equal("WY+1", back.PatternFor("Wind +Y").Left);
+        Assert.Equal("WY+2", back.PatternFor("Wind +Y").Right);
+        Assert.Equal("X", back.Axis.HxAxis);
+        Assert.Equal(1, back.Axis.HxSign);
+        Assert.Equal("Z", back.Axis.VzAxis);
+        Assert.Equal(-1, back.Axis.VzSign);
+        Assert.True(back.ReplaceExisting);
+        // Ghi de lan 2 (doi match) phai cap nhat dung, khong tao sheet thua.
+        profile.PatternMap["Dead loads"] = new RowPattern { Left = "DLS2", Right = "" };
+        profile.ReplaceExisting = false;
+        Detector.WriteProfileSheet(copy, profile, table);
+        var back2 = Detector.ReadProfileSheet(copy)!;
+        Assert.Equal("DLS2", back2.PatternFor("Dead loads").Left);
+        Assert.False(back2.ReplaceExisting);
+        Assert.Equal("WY+1", back2.PatternFor("Wind +Y").Left);
+    }
 }

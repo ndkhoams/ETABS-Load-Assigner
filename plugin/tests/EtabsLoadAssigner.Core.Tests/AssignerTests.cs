@@ -263,6 +263,32 @@ public sealed class AssignerTests : IDisposable
     }
 
     [Fact]
+    public void MockEtabs_ClearJointLoads_RemovesAllPatterns()
+    {
+        // Ghi de (user chot 08/11): xoá trắng MỌI tải tại joint trước khi gán
+        // mới — cả tải không có trong file Excel (vd tải gán tay bằng pattern
+        // khác) cũng bị xoá, để điểm chỉ còn tải do plugin nhập vào.
+        var mock = new MockEtabs();
+        mock.AssignForce("20 / D", "DLS", new double[] { 0, -2, -19, 0, 0, 0 });
+        mock.AssignForce("20 / D", "LLR", new double[] { 0, -1, -21, 0, 0, 0 });
+        mock.AssignForce("20 / D", "EX", new double[] { 1, -1, -1, 0, 0, 0 });
+        // 1 tải ở joint khác — không được xoá.
+        mock.AssignForce("27 / E", "DLS", new double[] { 0, 0, -5, 0, 0, 0 });
+        // DeleteLoadForce 1 pattern: chỉ xoá pattern đó.
+        Assert.True(mock.DeleteLoadForce("20 / D", "LLR"));
+        Assert.Null(mock.GetAssignment("20 / D", "LLR"));
+        Assert.NotNull(mock.GetAssignment("20 / D", "DLS"));
+        Assert.False(mock.DeleteLoadForce("20 / D", "LLR")); // đã xoá rồi -> false
+        // ClearJointLoads: xoá hết tải còn lại tại joint, joint khác còn nguyên.
+        int cleared = mock.ClearJointLoads("20 / D");
+        Assert.Equal(2, cleared);
+        Assert.Null(mock.GetAssignment("20 / D", "DLS"));
+        Assert.Null(mock.GetAssignment("20 / D", "EX"));
+        Assert.NotNull(mock.GetAssignment("27 / E", "DLS"));
+        Assert.Equal(0, mock.ClearJointLoads("20 / D")); // đã trắng -> 0
+    }
+
+    [Fact]
     public void CreateTypeFor_InheritsBaseType()
     {
         // Port cua create_type_for() (Python). Ma so theo enum eLoadPatternType
